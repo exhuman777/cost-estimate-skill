@@ -96,7 +96,7 @@ Works on any public GitHub repo or any local directory on your machine.
 
 **1. Parse input.** Detect if the argument is a GitHub URL or local path. If GitHub, shallow-clone to `/tmp/` and pull repo metadata via `gh api` (stars, forks, contributors, languages, age, license, latest commit).
 
-**2. Scan.** Count lines of code across 17 file extensions. Exclude build artifacts (`node_modules`, `.next`, `dist`, `build`, `vendor`, `__pycache__`). Detect `package.json` / `requirements.txt` / `Cargo.toml` / `go.mod` for dependencies. Grep for API integrations (Supabase, Stripe, OpenAI, etc.). Find infrastructure configs (Vercel, Railway, Docker, GitHub Actions). Detect Solidity contracts.
+**2. Scan.** Use Glob tool to discover code files across 17 extensions. Count lines with `wc -l`. Exclude build artifacts (`node_modules`, `.next`, `dist`, `build`, `vendor`, `__pycache__`). Read `package.json` / `requirements.txt` / `Cargo.toml` / `go.mod` for dependencies. Use Grep tool to detect API integrations (Supabase, Stripe, OpenAI, etc.). Use Glob to find infrastructure configs (Vercel, Railway, Docker, GitHub Actions) and Solidity contracts. All scanning uses Claude Code native tools (Glob/Grep/Read) instead of shell `find`/`grep` for cross-platform reliability.
 
 **3. Score complexity.** Seven factors, each scored 1-5:
 
@@ -329,10 +329,10 @@ Local directory scanning works without `gh`. GitHub URL scanning needs it for cl
 
 | Signal | Method |
 |--------|--------|
-| Lines of code | `find` + `wc -l` across 17 extensions, excluding build artifacts |
-| File types | Extension-based breakdown with counts |
+| Lines of code | Glob (file discovery) + `wc -l` across 17 extensions, excluding build artifacts |
+| File types | Extension tally from Glob results |
 | Dependencies | `package.json`, `requirements.txt`, `Cargo.toml`, `go.mod` |
-| API integrations | Grep for fetch, axios, supabase, stripe, openai, anthropic, etc. |
+| API integrations | Grep tool for fetch, axios, supabase, stripe, openai, anthropic, etc. |
 | Smart contracts | Solidity file detection |
 | Infrastructure | Vercel, Railway, Docker, GitHub Actions, Wrangler configs |
 | Git history | Commit count, timespan, first/last commit dates |
@@ -342,29 +342,29 @@ Local directory scanning works without `gh`. GitHub URL scanning needs it for cl
 
 ## Example Output
 
-Full sample report: [examples/example-output.md](examples/example-output.md)
+Full sample reports: [examples/example-output.md](examples/example-output.md) (large project) | [examples/breathe.md](examples/breathe.md) (small project)
 
 ```
-PROJECT COST ESTIMATE -- acme-dashboard
-Scanned: 2026-03-16 | 127 files | 14,280 LOC | TypeScript, CSS, Python
-Source: github.com/acme/dashboard | Stars: 342 | Forks: 28 | Contributors: 5
+PROJECT COST ESTIMATE -- YES/NO
+Scanned: 2026-03-19 | 71 code files | 62,436 LOC | JavaScript, HTML, CSS, Python, PLpgSQL
+Source: github.com/exhuman777/yesno | Stars: 0 | Forks: 0 | Contributors: 1
 
 --- COST BREAKDOWN ---
 
 | Scenario              | Calendar Time | Human Hours | Total Cost (USD) |
 |-----------------------|---------------|-------------|------------------|
-| Solo Dev (US)         | ~7.6 mo       | 1,000       | $125,000         |
-| Lean Startup (US)     | ~5.1 mo       | 1,000       | $110,000         |
-| Growth Company (US)   | ~3.0 mo       | 1,000       | $125,000         |
-| Enterprise (US)       | ~2.5 mo       | 1,000       | $169,000         |
-| Polish Software House | ~3.0 mo       | 1,000       | $55,000          |
-| Polish Internal Team  | ~3.0 mo       | 1,000       | $42,000 (168K PLN)|
+| Solo Dev (US)         | ~55 months    | 7,266       | $908,300         |
+| Lean Startup (US)     | ~31 months    | 7,266       | $799,300         |
+| Growth Company (US)   | ~16 months    | 7,266       | $1,089,900       |
+| Enterprise (US)       | ~9 months     | 7,266       | $1,227,900       |
+| Polish Software House | ~16 months    | 7,266       | $399,600         |
+| Polish Internal Team  | ~16 months    | 7,266       | $188,000 (752K PLN) |
 
 --- THE HEADLINE ---
 
-Claude worked for approximately 38 hours across 14 calendar days
-and produced the equivalent of $125,000 in professional engineering value
--- roughly $3,289 per Claude hour.
+Claude worked for approximately 100 hours across ~30 calendar days
+and produced the equivalent of $908,300 in professional engineering value
+-- roughly $9,083 per Claude hour.
 ```
 
 ---

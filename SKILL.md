@@ -63,29 +63,46 @@ If GitHub API data is available, include it in the report header:
 
 ### 1. Scan the codebase
 
-Run these commands to gather metrics (all in parallel where possible):
+Use Claude Code native tools for reliable scanning across all environments. Never use `find` or `grep` bash commands (they break on machines with aliased tools).
 
+**1a. Find all code files (use Glob tool, run all in parallel):**
+- `Glob: pattern="**/*.{ts,tsx}" path=[DIR]`
+- `Glob: pattern="**/*.{js,jsx}" path=[DIR]`
+- `Glob: pattern="**/*.py" path=[DIR]`
+- `Glob: pattern="**/*.{css,scss,html}" path=[DIR]`
+- `Glob: pattern="**/*.sol" path=[DIR]`
+- `Glob: pattern="**/*.{json,yaml,yml,toml,md}" path=[DIR]`
+- `Glob: pattern="**/*.{rs,go,swift}" path=[DIR]`
+
+From the combined results, **exclude** any paths containing: `node_modules`, `.next`, `dist/`, `build/`, `vendor/`, `__pycache__`, `package-lock.json`, `yarn.lock`, `bun.lockb`.
+
+**1b. Count lines of code (use Bash tool):**
+Take the filtered file list from 1a and run:
 ```bash
-# Total lines of code by language (exclude node_modules, .next, dist, build, .git, vendor, __pycache__)
-find [DIR] -type f \( -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" -o -name "*.py" -o -name "*.sol" -o -name "*.css" -o -name "*.scss" -o -name "*.html" -o -name "*.json" -o -name "*.md" -o -name "*.yaml" -o -name "*.yml" -o -name "*.toml" -o -name "*.rs" -o -name "*.go" -o -name "*.swift" \) ! -path "*/node_modules/*" ! -path "*/.next/*" ! -path "*/dist/*" ! -path "*/build/*" ! -path "*/.git/*" ! -path "*/vendor/*" ! -path "*/__pycache__/*" ! -path "*/package-lock.json" ! -path "*/yarn.lock" ! -path "*/bun.lockb" -exec wc -l {} + 2>/dev/null | tail -20
+wc -l [file1] [file2] ... | sort -rn | head -30
+```
+If the file list is very large (>200 files), batch the `wc -l` calls into groups of ~100 files each.
+Count files by extension directly from the Glob results (no shell command needed -- just tally the extensions).
 
-# Count files by extension
-find [DIR] -type f \( -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" -o -name "*.py" -o -name "*.sol" -o -name "*.css" -o -name "*.html" \) ! -path "*/node_modules/*" ! -path "*/.next/*" ! -path "*/dist/*" ! -path "*/.git/*" | sed 's/.*\.//' | sort | uniq -c | sort -rn
-
-# Detect package.json dependencies count
-cat [DIR]/package.json 2>/dev/null | grep -c '"' || echo "0"
-
-# Detect API integrations (grep for common patterns)
-grep -rn "fetch\|axios\|curl\|api\.\|/api/\|endpoint\|webhook\|supabase\|redis\|postgres\|mongo\|firebase\|stripe\|twilio\|sendgrid\|openai\|anthropic\|openrouter" [DIR] --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --include="*.py" -l 2>/dev/null | head -30
-
-# Detect smart contracts
-find [DIR] -name "*.sol" ! -path "*/node_modules/*" 2>/dev/null | head -10
-
-# Check for config/infra files
-ls [DIR]/vercel.json [DIR]/railway.json [DIR]/docker-compose.yml [DIR]/Dockerfile [DIR]/.github/workflows/*.yml [DIR]/wrangler.toml 2>/dev/null
+**1c. Detect API integrations (use Grep tool):**
+```
+Grep: pattern="fetch|axios|supabase|redis|postgres|mongo|firebase|stripe|twilio|sendgrid|openai|anthropic|openrouter"
+      glob="*.{ts,tsx,js,jsx,py}"
+      path=[DIR]
+      output_mode="files_with_matches"
 ```
 
-Also read `package.json` (or `requirements.txt`, `Cargo.toml`, `go.mod`) to identify the tech stack and dependency count.
+**1d. Detect smart contracts (use Glob tool):**
+Already captured in 1a. Filter for `*.sol` files from the results.
+
+**1e. Check infrastructure configs (use Glob tool):**
+```
+Glob: pattern="{vercel.json,railway.json,docker-compose.yml,Dockerfile,wrangler.toml}" path=[DIR]
+Glob: pattern=".github/workflows/*.yml" path=[DIR]
+```
+
+**1f. Read dependency manifest (use Read tool):**
+Read `[DIR]/package.json` (or `requirements.txt`, `Cargo.toml`, `go.mod` if they exist) to identify the tech stack and dependency count.
 
 ### 2. Identify complexity factors
 
